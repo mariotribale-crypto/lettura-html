@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Lettura con evidenziazione</title>
+<style>
+body { font-family: Arial, sans-serif; margin:20px; }
+.container { display: flex; gap: 20px; }
+.text-box { width: 50%; height: 250px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+.sentence { display: block; margin: 5px 0; }
+.highlight { background-color: yellow; }
+.controls { margin-top: 20px; }
+button { padding: 8px 12px; margin: 5px; font-size: 14px; }
+audio { display:block; margin-top:10px; width:100%; }
+</style>
+</head>
+<body>
+
+<h2>Lettura testi con audio e evidenziazione</h2>
+
+<div class="container">
+  <div id="text1" class="text-box"></div>
+  <div id="text2" class="text-box"></div>
+</div>
+
+<div class="controls">
+  <label>Audio Lingua 1: <input type="file" id="audio1" accept="audio/*"></label><br>
+  <label>Audio Lingua 2: <input type="file" id="audio2" accept="audio/*"></label><br>
+  <button onclick="playAudio()">Play</button>
+  <button onclick="pauseAudio()">Pausa</button>
+  <button onclick="stopAudio()">Stop</button>
+  <button onclick="nextSentence()">Avanti frase</button>
+  <button onclick="switchLanguage()">Cambia lingua</button>
+</div>
+
+<audio id="player"></audio>
+
+<script>
+// --- Testi (puoi sostituirli con i tuoi testi reali)
+let textData = {
+  1: "Questa è la prima frase. Questa è la seconda frase. E questa è la terza frase.",
+  2: "This is the first sentence. This is the second sentence. And this is the third sentence."
+};
+
+let currentLang = 1; // 1 o 2
+let currentSentenceIndex = 0;
+let sentences = [];
+let player = document.getElementById("player");
+
+// --- Carica testo in span per evidenziazione
+function loadText(lang) {
+  let container = document.getElementById("text"+lang);
+  container.innerHTML = "";
+  sentences = textData[lang].split(".");
+  sentences = sentences.map(s => s.trim()).filter(s => s.length>0);
+  sentences.forEach((s,i)=>{
+    let span = document.createElement("span");
+    span.textContent = s + ".";
+    span.className = "sentence";
+    container.appendChild(span);
+  });
+  currentSentenceIndex = 0;
+}
+
+// --- Evidenzia frase corrente
+function highlightSentence() {
+  let container = document.getElementById("text"+currentLang);
+  let spans = container.querySelectorAll(".sentence");
+  spans.forEach((span,i)=>{
+    span.classList.toggle("highlight", i===currentSentenceIndex);
+  });
+  // Scroll automatico
+  spans[currentSentenceIndex].scrollIntoView({behavior: "smooth", block:"center"});
+}
+
+// --- Carica audio scelto
+document.getElementById("audio1").addEventListener("change", function(e){
+  let file = e.target.files[0];
+  if(file) player.src = URL.createObjectURL(file);
+});
+document.getElementById("audio2").addEventListener("change", function(e){
+  let file = e.target.files[0];
+  if(file && currentLang===2) player.src = URL.createObjectURL(file);
+});
+
+// --- Controlli audio
+function playAudio() {
+  highlightSentence();
+  player.play();
+}
+function pauseAudio() {
+  player.pause();
+}
+function stopAudio() {
+  player.pause();
+  player.currentTime = 0;
+  currentSentenceIndex = 0;
+  highlightSentence();
+}
+function nextSentence() {
+  if(currentSentenceIndex < sentences.length-1){
+    currentSentenceIndex++;
+    highlightSentence();
+  }
+}
+
+// --- Cambia lingua
+function switchLanguage(){
+  currentLang = currentLang===1 ? 2 : 1;
+  loadText(currentLang);
+  // Cambia anche audio se già caricato
+  let audioInput = currentLang===1 ? document.getElementById("audio1") : document.getElementById("audio2");
+  if(audioInput.files.length>0){
+    player.src = URL.createObjectURL(audioInput.files[0]);
+  } else {
+    player.src = "";
+  }
+}
+
+// --- Auto evidenzia frase seguente durante l'audio
+player.addEventListener("timeupdate", ()=>{
+  // approssimazione: dividi audio in frasi uguali per evidenziare automaticamente
+  if(sentences.length===0) return;
+  let duration = player.duration || 1;
+  let percent = player.currentTime/duration;
+  let index = Math.floor(percent * sentences.length);
+  if(index!==currentSentenceIndex && index<sentences.length){
+    currentSentenceIndex = index;
+    highlightSentence();
+  }
+});
+
+// --- Carica testo iniziale
+loadText(currentLang);
+</script>
+
+</body>
+</html>
